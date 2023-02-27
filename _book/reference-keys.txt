@@ -111,3 +111,4 @@ número-y-proporción-de-casos-por-nacionalidad-según-país-de-contagio.
 edad-de-los-casos-notificados-según-sexo.
 edad-de-los-casos-notificados-según-nacionalidad
 edad-de-los-casos-notificados-según-provincia
+edad-nacionalidad-1
