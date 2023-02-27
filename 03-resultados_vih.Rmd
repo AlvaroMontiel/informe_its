@@ -1,0 +1,1167 @@
+# Situación epidemiológica VIH/SIDA.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(include = FALSE)
+```
+
+```{r, Librerías, echo=FALSE, include=FALSE}
+library(readxl)
+library(lubridate)
+library(tidyverse)
+```
+
+
+```{r, carga de archivos, echo=FALSE, include=FALSE}
+### Carga de datos
+if (Sys.info()[['sysname']] == "Darwin"){
+  bd <- read_excel("/Users/alvaro/Documents/Data_Science/R/analisis_its/datos_vih_analisis_2023.xlsx")
+} else {
+  bd <- read_excel("C:/Users/Usuario/Documents/R/analisis_its/datos_vih_analisis_2023.xlsx") 
+}
+```
+
+```{r, summary, echo=FALSE, include=FALSE}
+### Resumen de la base
+summary(bd)
+```
+
+
+```{r, ajustes, echo=FALSE, include=FALSE}
+### Ajuste de variables
+bd$fecha_notificacion <- as.Date(bd$fecha_notificacion, format='%d/%m/%Y')
+bd$fecha_nacimiento <- as.Date(bd$fecha_nacimiento, format='%d/%m/%Y')
+bd$id_sexo[bd$id_sexo==99] <- NA
+bd$id_sexo <- factor(bd$id_sexo, levels = c(1,2), labels = c("Hombre", "Mujer"))
+bd$id_set_datos <- factor(bd$id_set_datos)
+bd$id_comuna_residencia <- factor(bd$id_comuna_residencia)
+bd$id_region_residencia <- factor(bd$id_region_residencia)
+bd$id_establecimiento <- factor(bd$id_establecimiento)
+bd$id_dependencia_estab <- factor(bd$id_dependencia_estab)
+bd$PacienteNacionalidad_id_nacionalidad <- factor(bd$PacienteNacionalidad_id_nacionalidad) 
+bd$PacientePaisContagio_id_nacionalidad <- factor(bd$PacientePaisContagio_id_nacionalidad) 
+
+bd2 <- filter(bd, year(fecha_nacimiento) > 1900 )  
+bd2 <- filter(bd2, year(fecha_notificacion) >= 2008 & year(fecha_notificacion) < 2023)
+bd2$edad2 <- as.integer(round((bd2$fecha_notificacion - bd2$fecha_nacimiento)/365))
+bd2 <- subset(bd2, id_comuna_residencia == "2101" |
+                id_comuna_residencia == "2102" |
+                id_comuna_residencia == "2103" |
+                id_comuna_residencia == "2104" |
+                id_comuna_residencia == "2201" |
+                id_comuna_residencia == "2202" | 
+                id_comuna_residencia == "2203" |
+                id_comuna_residencia == "2301" | 
+                id_comuna_residencia == "2302"
+              )
+
+bd2$id_comuna_residencia <- factor(bd2$id_comuna_residencia)
+bd2$id_region_residencia <- factor(bd2$id_region_residencia)
+
+bd2 = bd2 %>% 
+  mutate(
+    periodo = case_when( 
+      year(fecha_notificacion) <= 2012 ~ 1,
+      year(fecha_notificacion) >= 2013 & year(fecha_notificacion) <=2017  ~ 2,
+      year(fecha_notificacion) >= 2018 ~ 3,
+    )
+  )
+
+bd2$id_comuna_residencia <- factor(bd2$id_comuna_residencia,
+                                  levels = c(2101,2102,2103,2104,
+                                            2201,2202,2203,
+                                            2301,2302),
+                                  labels= c("Afta", "Mej", "S. Gorda", "Taltal",
+                                           "Cal", "Oll", "SPA",
+                                           "Toc", "ME"))
+```
+
+
+## Resumen estadístico de la base
+```{r, , summary de la base ajustada, echo=FALSE, include=TRUE}
+summary(bd2)
+```
+
+
+## Número y porcentaje de casos notificados según sexo.
+
+### Número y porcentaje de casos notificados según sexo, quinquenio 2008-2012. {-}
+```{r, sexo, echo=FALSE}
+###### Sexo
+sexo1 <- table(bd2$id_sexo[bd2$periodo == 1])
+sexo2 <- table(bd2$id_sexo[bd2$periodo == 2])
+sexo3 <- table(bd2$id_sexo[bd2$periodo == 3])
+```
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo1)
+round(addmargins(prop.table(sexo1)),2)*100
+```
+
+### Número y porcentaje de casos notificados según sexo, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo2)
+round(addmargins(prop.table(sexo2)),2)*100
+```
+
+### Número y porcentaje de casos notificados según sexo, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo3)
+round(addmargins(prop.table(sexo3)),2)*100
+
+```
+
+
+## Número y porcentaje de casos notificados según comuna.
+### Número y porcentaje de casos notificados según comuna, quinquenio 2008-2012. {-}
+```{r, echo=FALSE, include=FALSE}
+###### Comunas
+comuna1 <- table(bd2$id_comuna_residencia[bd2$periodo == 1])
+comuna2 <- table(bd2$id_comuna_residencia[bd2$periodo == 2])
+comuna3 <- table(bd2$id_comuna_residencia[bd2$periodo == 3])
+```
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(comuna1)
+round(addmargins(prop.table(comuna1)),2)*100
+```
+
+### Número y porcentaje de casos notificados según comuna, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(comuna2)
+round(addmargins(prop.table(comuna2)),2)*100
+```
+
+
+### Número y porcentaje de casos notificados según comuna, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(comuna3)
+round(addmargins(prop.table(comuna3)),2)*100
+```
+
+
+## Número y porcentaje de casos notificados según nacionalidad
+### Número y porcentaje de casos notificados según nacionalidad, quinquenio 2008-2012. {-}
+```{r, echo=FALSE, include=FALSE}
+###### Nacionalidad
+bd2 = bd2 %>% 
+  mutate(
+    nacionalidad = case_when( 
+      PacienteNacionalidad_id_nacionalidad == 152 ~ 1,
+      PacienteNacionalidad_id_nacionalidad == 32 |
+        PacienteNacionalidad_id_nacionalidad  == 68 |
+        PacienteNacionalidad_id_nacionalidad  == 76 |
+        PacienteNacionalidad_id_nacionalidad  == 156 |
+        PacienteNacionalidad_id_nacionalidad  == 170 |
+        PacienteNacionalidad_id_nacionalidad  == 192 |
+        PacienteNacionalidad_id_nacionalidad  == 200 |
+        PacienteNacionalidad_id_nacionalidad  == 214 |
+        PacienteNacionalidad_id_nacionalidad  == 218 |
+        PacienteNacionalidad_id_nacionalidad  == 242 |
+        PacienteNacionalidad_id_nacionalidad  == 332 |
+        PacienteNacionalidad_id_nacionalidad  == 340 |
+        PacienteNacionalidad_id_nacionalidad  == 600 |
+        PacienteNacionalidad_id_nacionalidad  == 604 |
+        PacienteNacionalidad_id_nacionalidad  == 630 |
+        PacienteNacionalidad_id_nacionalidad  == 642 |
+        PacienteNacionalidad_id_nacionalidad  == 724 |
+        PacienteNacionalidad_id_nacionalidad  == 858 |
+        PacienteNacionalidad_id_nacionalidad  == 862 ~ 2
+    )
+  )
+
+bd2$nacionalidad <- factor(bd2$nacionalidad, levels = c(1,2),
+                           labels = c("Chilenos", "Extranjeros"))
+  
+nacion1 <- table(bd2$nacionalidad[bd2$periodo == 1])
+nacion2 <- table(bd2$nacionalidad[bd2$periodo == 2])
+nacion3 <- table(bd2$nacionalidad[bd2$periodo == 3])
+```
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(nacion1)
+round(addmargins(prop.table(nacion1)),2)*100
+```
+
+### Número y porcentaje de casos notificados según nacionalidad, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(nacion2)
+round(addmargins(prop.table(nacion2)),2)*100
+```
+
+### Número y porcentaje de casos notificados según nacionalidad, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(nacion3)
+round(addmargins(prop.table(nacion3)),2)*100
+
+#nacion3_ <- table(bd2$PacienteNacionalidad_id_nacionalidad[bd2$periodo == 3])
+#addmargins(nacion3_)
+#round(addmargins(prop.table(nacion3_)),2)*100
+```
+
+
+## Número y porcentaje de casos notificados según país de contagio
+### Número y porcentaje de casos notificados según pais de contagio, quinquenio 2008-2012. {-}
+```{r, echo=FALSE, include=FALSE}
+### Pais contagio
+bd2 = bd2 %>% 
+  mutate(
+    pais_contagio = case_when( 
+      PacientePaisContagio_id_nacionalidad == 152 ~ 1,
+      PacientePaisContagio_id_nacionalidad == 32 |
+        PacientePaisContagio_id_nacionalidad  == 68 |
+        PacientePaisContagio_id_nacionalidad  == 76 |
+        PacientePaisContagio_id_nacionalidad  == 156 |
+        PacientePaisContagio_id_nacionalidad  == 170 |
+        PacientePaisContagio_id_nacionalidad  == 192 |
+        PacientePaisContagio_id_nacionalidad  == 200 |
+        PacientePaisContagio_id_nacionalidad  == 214 |
+        PacientePaisContagio_id_nacionalidad  == 218 |
+        PacientePaisContagio_id_nacionalidad  == 242 |
+        PacientePaisContagio_id_nacionalidad  == 276 |
+        PacientePaisContagio_id_nacionalidad  == 332 |
+        PacientePaisContagio_id_nacionalidad  == 340 |
+        PacientePaisContagio_id_nacionalidad  == 600 |
+        PacientePaisContagio_id_nacionalidad  == 604 |
+        PacientePaisContagio_id_nacionalidad  == 630 |
+        PacientePaisContagio_id_nacionalidad  == 642 |
+        PacientePaisContagio_id_nacionalidad  == 724 |
+        PacientePaisContagio_id_nacionalidad  == 858 |
+        PacientePaisContagio_id_nacionalidad  == 862 ~ 2
+    )
+  )
+
+bd2$pais_contagio <- factor(bd2$pais_contagio, levels = c(1,2),
+                           labels = c("Chile", "Extranjero"))
+
+paiscontagio1 <- table(bd2$pais_contagio[bd2$periodo == 1])
+paiscontagio2 <- table(bd2$pais_contagio[bd2$periodo == 2])
+paiscontagio3 <- table(bd2$pais_contagio[bd2$periodo == 3])
+```
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(paiscontagio1)
+round(addmargins(prop.table(paiscontagio1)),2)*100
+```
+
+### Número y porcentaje de casos notificados según pais de contagio, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(paiscontagio2)
+round(addmargins(prop.table(paiscontagio2)),2)*100
+```
+
+ 
+### Número y porcentaje de casos notificados según pais de contagio, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(paiscontagio3)
+round(addmargins(prop.table(paiscontagio3)),2)*100
+
+#paiscontagio3_ <- table(bd2$PacientePaisContagio_id_nacionalidad[bd2$periodo == 3])
+#addmargins(paiscontagio3_)
+#round(addmargins(prop.table(paiscontagio3_)),2)*100
+```
+
+
+## Casos notificados según edad
+### Casos notificados según edad, quinquenio 2008-2012. {-}
+```{r, echo=FALSE, include=FALSE}
+bd2_1 <- subset(bd2, periodo == 1)
+bd2_2 <- subset(bd2, periodo == 2)
+bd2_3 <- subset(bd2, periodo == 3)
+```
+
+```{r, echo=FALSE, include=TRUE}
+bd2_1 %>% summarise(
+  Mínimo = min(edad2),
+  Máximo = max(edad2),
+  Rango = max(edad2)-min(edad2),
+  Qu_25 = quantile(edad2, prob=c(0.25)),
+  Qu_50 = quantile(edad2, prob=c(0.5)),
+  Qu_75 = quantile(edad2, prob=c(0.75)),
+  Media = round(mean(edad2),4),
+  Mediana = median(edad2),
+  Varianza = round(var(edad2),4),
+  Desv_Estándar = round(sd(edad2),4),
+  CV = round(sd(edad2)/mean(edad2)*100,4)
+)
+
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd2_1$edad2)
+
+plot(density(bd2_1$edad2),
+     lwd=3,
+     col="blue3",
+     xlim = c(0, 100),
+     main="Gráfico de densidad de la Edad, 2008-2012",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+
+
+hist(bd2_1$edad2,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad, 2008-2012")
+```
+
+### Casos notificados según edad, quinquenio 2013-2017. {-}
+```{r, include=TRUE, echo=FALSE}
+bd2_2 %>% summarise(
+  Mínimo = min(edad2),
+  Máximo = max(edad2),
+  Rango = max(edad2)-min(edad2),
+  Qu_25 = quantile(edad2, prob=c(0.25)),
+  Qu_50 = quantile(edad2, prob=c(0.5)),
+  Qu_75 = quantile(edad2, prob=c(0.75)),
+  Media = round(mean(edad2),4),
+  Mediana = median(edad2),
+  Varianza = round(var(edad2),4),
+  Desv_Estándar = round(sd(edad2),4),
+  CV = round(sd(edad2)/mean(edad2)*100,4)
+)
+
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd2_2$edad2)
+
+plot(density(bd2_2$edad2),
+     lwd=3,
+     col="blue3",
+     xlim = c(0, 100),
+     main="Gráfico de densidad de la Edad, 2013-2017",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+
+
+hist(bd2_2$edad2,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad, 2013-2017")
+```
+
+### Casos notificados según edad, quinquenio 2018-2022. {-}
+```{r, include=TRUE, echo=FALSE}
+bd2_3 %>% summarise(
+  Mínimo = min(edad2),
+  Máximo = max(edad2),
+  Rango = max(edad2)-min(edad2),
+  Qu_25 = quantile(edad2, prob=c(0.25)),
+  Qu_50 = quantile(edad2, prob=c(0.5)),
+  Qu_75 = quantile(edad2, prob=c(0.75)),
+  Media = round(mean(edad2),4),
+  Mediana = median(edad2),
+  Varianza = round(var(edad2),4),
+  Desv_Estándar = round(sd(edad2),4),
+  CV = round(sd(edad2)/mean(edad2)*100,4)
+)
+
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd2_3$edad2)
+
+plot(density(bd2_3$edad2),
+     lwd=3,
+     col="blue3",
+     xlim = c(0, 100),
+     main="Gráfico de densidad de la Edad, 2018-2022",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+
+
+hist(bd2_3$edad2,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad, 2018-2022")
+
+```
+
+
+
+## Número y porcentaje de casos por comuna según sexo.
+### Número y porcentaje de casos por comuna según sexo quinquenio 2008-2012. {-}
+```{r, include=FALSE, echo=FALSE}
+### sexo-comuna
+sexo_comuna1 <- table(bd2$id_comuna_residencia[bd2$periodo == 1],
+                      bd2$id_sexo[bd2$periodo == 1])
+
+sexo_comuna2 <- table(bd2$id_comuna_residencia[bd2$periodo == 2],
+                      bd2$id_sexo[bd2$periodo == 2])
+
+sexo_comuna3 <- table(bd2$id_comuna_residencia[bd2$periodo == 3],
+                      bd2$id_sexo[bd2$periodo == 3])
+
+```
+
+
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_comuna1)
+round(addmargins(prop.table(sexo_comuna1,1),2),2)*100
+```
+
+### Número y porcentaje de casos por comuna según sexo quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_comuna2)
+round(addmargins(prop.table(sexo_comuna2,1),2),2)*100
+```
+
+
+### Número y porcentaje de casos por comuna según sexo quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_comuna3)
+round(addmargins(prop.table(sexo_comuna3,1),2),2)*100
+```
+
+
+## Número y proporción de casos por provincia según sexo.
+### Número y proporción de casos por provincia según sexo quinquenio 2008-2012. {-}
+
+
+```{r, include=FALSE, echo=FALSE}
+### sexo-comuna
+bd2 <- bd2 %>% mutate(
+  provincia = case_when(
+     id_comuna_residencia=="Afta"|
+       id_comuna_residencia=="Mej"|
+       id_comuna_residencia=="S.Gorda"|
+       id_comuna_residencia == "Taltal" ~ "Antofagasta",
+     id_comuna_residencia == "Cal" |
+       id_comuna_residencia== "Oll" |
+       id_comuna_residencia == "SPA" |
+    id_comuna_residencia == "Toc" |
+      id_comuna_residencia == "ME" ~ "El loa y Tocopilla"
+  )
+)
+
+
+
+sexo_provincia1 <- table(bd2$id_sexo[bd2$periodo == 1],
+                         bd2$provincia[bd2$periodo == 1])
+
+sexo_provincia2 <- table(bd2$id_sexo[bd2$periodo == 2],
+                         bd2$provincia[bd2$periodo == 2])
+
+sexo_provincia3 <- table(bd2$id_sexo[bd2$periodo == 3],
+                         bd2$provincia[bd2$periodo == 3])
+
+```
+
+
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_provincia1)
+round(addmargins(prop.table(sexo_provincia1,1),2),2)*100
+chisq.test(sexo_provincia1)
+```
+
+### Número y proporción de casos por provincia según sexo quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_provincia2)
+round(addmargins(prop.table(sexo_provincia2,1),2),2)*100
+chisq.test(sexo_provincia2)
+```
+
+
+### Número y proporción de casos por provincia según sexo quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_provincia3)
+round(addmargins(prop.table(sexo_provincia3,1),2),2)*100
+chisq.test(sexo_provincia3)
+```
+
+## Número y proporción de casos por nacionalidad según sexo.
+### Número y proporción de casos por nacionalidad según sexo quinquenio 2008-2012. {-}
+
+```{r, echo=FALSE, include=FALSE}
+### sexo-nacionalidad
+
+sexo_nacion1 <- table(bd2$id_sexo[bd2$periodo == 1],
+                      bd2$nacionalidad[bd2$periodo == 1])
+
+sexo_nacion2 <- table(bd2$id_sexo[bd2$periodo == 2],
+                      bd2$nacionalidad[bd2$periodo == 2])
+
+sexo_nacion3 <- table(bd2$id_sexo[bd2$periodo == 3],
+                      bd2$nacionalidad[bd2$periodo == 3])
+```
+
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_nacion1)
+round(addmargins(prop.table(sexo_nacion1,1),2),2)*100
+chisq.test(sexo_nacion1)
+```
+
+
+### Número y proporción de casos por nacionalidad según sexo quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_nacion2)
+round(addmargins(prop.table(sexo_nacion2,1),2),2)*100
+chisq.test(sexo_nacion2)
+```
+
+
+### Número y proporción de casos por nacionalidad según sexo quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_nacion3)
+round(addmargins(prop.table(sexo_nacion3,1),2),2)*100
+chisq.test(sexo_nacion3)
+
+```
+
+## Número y proporción de casos por país de contagio según sexo.
+### Número y proporción de casos por país de contagio según sexo quinquenio 2008-2012. {-}
+
+```{r, echo=FALSE, include=FALSE}
+### sexo-pais_contagio
+
+sexo_pcontagio1 <- table(bd2$id_sexo[bd2$periodo == 1],
+                      bd2$pais_contagio[bd2$periodo == 1])
+
+sexo_pcontagio2 <- table(bd2$id_sexo[bd2$periodo == 2],
+                      bd2$pais_contagio[bd2$periodo == 2])
+
+sexo_pcontagio3 <- table(bd2$id_sexo[bd2$periodo == 3],
+                      bd2$pais_contagio[bd2$periodo == 3])
+
+```
+
+
+````{r, echo=FALSE, include=TRUE}
+addmargins(sexo_pcontagio1)
+round(addmargins(prop.table(sexo_pcontagio1,1),2),2)*100
+chisq.test(sexo_pcontagio1)
+```
+
+
+### Número y proporción de casos por país de contagio según sexo quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_pcontagio2)
+round(addmargins(prop.table(sexo_pcontagio2,1),2),2)*100
+chisq.test(sexo_pcontagio2)
+```
+
+
+### Número y proporción de casos por país de contagio según sexo quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(sexo_pcontagio3)
+round(addmargins(prop.table(sexo_pcontagio3,1),2),2)*100
+chisq.test(sexo_pcontagio3)
+```
+
+
+
+## Número y proporción de casos por comuna según nacionalidad.
+### Número y proporción de casos por comuna según nacionalidad, quinquenio 2008-2012. {-}
+```{r, echo=FALSE, include=FALSE}
+### comuna-nacionalidad
+
+comuna_nacionalidad1 <- table(bd2$id_comuna_residencia[bd2$periodo == 1],
+                              bd2$nacionalidad[bd2$periodo == 1])
+
+comuna_nacionalidad2 <- table(bd2$id_comuna_residencia[bd2$periodo == 2],
+                             bd2$nacionalidad[bd2$periodo == 2])
+
+comuna_nacionalidad3 <- table(bd2$id_comuna_residencia[bd2$periodo == 3],
+                              bd2$nacionalidad[bd2$periodo == 3])
+```
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(comuna_nacionalidad1)
+round(addmargins(prop.table(comuna_nacionalidad1,1),2),2)*100
+```
+
+
+###  Número y proporción de casos por comuna según nacionalidad, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(comuna_nacionalidad2)
+round(addmargins(prop.table(comuna_nacionalidad2,1),2),2)*100
+```
+
+
+### Número y proporción de casos por comuna según nacionalidad, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(comuna_nacionalidad3)
+round(addmargins(prop.table(comuna_nacionalidad3,1),2),2)*100
+```
+
+
+
+
+## Número y proporción de casos por provincia según nacionalidad.
+### Número y proporción de casos por provincia según nacionalidad, quinquenio 2008-2012. {-}
+```{r,  echo=FALSE, include=FALSE}
+### comuna-nacionalidad
+
+provincia_nacionalidad1 <- table(bd2$nacionalidad[bd2$periodo == 1],
+                              bd2$provincia[bd2$periodo == 1])
+
+provincia_nacionalidad2 <- table(bd2$nacionalidad[bd2$periodo == 2],
+                             bd2$provincia[bd2$periodo == 2])
+
+provincia_nacionalidad3 <- table(bd2$nacionalidad[bd2$periodo == 3],
+                              bd2$provincia[bd2$periodo == 3])
+```
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(provincia_nacionalidad1)
+round(addmargins(prop.table(provincia_nacionalidad1,1),2),2)*100
+chisq.test(provincia_nacionalidad1)
+```
+
+
+### Número y proporción de casos por provincia según nacionalidad, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(provincia_nacionalidad2)
+round(addmargins(prop.table(provincia_nacionalidad2,1),2),2)*100
+chisq.test(provincia_nacionalidad2)
+```
+
+
+### Número y proporción de casos por provincia según nacionalidad, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(provincia_nacionalidad3)
+round(addmargins(prop.table(provincia_nacionalidad3,1),2),2)*100
+chisq.test(provincia_nacionalidad3)
+```
+
+
+## Número y proporción de casos por comuna según país de contagio
+### Número y proporción de casos por comuna según pais de contagio, quinquenio 2008-2012. {-}
+```{r, include=FALSE, echo=FALSE}
+### comuna-pais_contagio
+comuna_pcontagio1 <- table(bd2$id_comuna_residencia[bd2$periodo == 1],
+                              bd2$pais_contagio[bd2$periodo == 1])
+
+comuna_pcontagio2 <- table(bd2$id_comuna_residencia[bd2$periodo == 2],
+                              bd2$pais_contagio[bd2$periodo == 2])
+
+comuna_pcontagio3 <- table(bd2$id_comuna_residencia[bd2$periodo == 3],
+                              bd2$pais_contagio[bd2$periodo == 3])
+```
+
+```{r, include=TRUE, echo=FALSE}
+addmargins(comuna_pcontagio1)
+round(addmargins(prop.table(comuna_pcontagio1,1),2),2)*100
+```
+
+
+
+### Número y proporción de casos por comuna según pais de contagio, quinquenio 2013-2017. {-}
+```{r, include=TRUE, echo=FALSE}
+addmargins(comuna_pcontagio2)
+round(addmargins(prop.table(comuna_pcontagio2,1),2),2)*100
+```
+
+### Número y proporción de casos por comuna según pais de contagio, quinquenio 2018-2022. {-}
+```{r, include=TRUE, echo=FALSE}
+addmargins(comuna_pcontagio3)
+round(addmargins(prop.table(comuna_pcontagio3,1),2),2)*100
+```
+
+
+
+
+## Número y proporción de casos por provincia según país de contagio
+### Número y proporción de casos por provincia según pais de contagio, quinquenio 2008-2012. {-}
+```{r, include=TRUE, echo=FALSE}
+### provincia-pais_contagio
+provincia_pcontagio1 <- table(bd2$pais_contagio[bd2$periodo == 1],
+                              bd2$provincia[bd2$periodo == 1])
+
+provincia_pcontagio2 <- table(bd2$pais_contagio[bd2$periodo == 2],
+                              bd2$provincia[bd2$periodo == 2])
+
+provincia_pcontagio3 <- table(bd2$pais_contagio[bd2$periodo == 3],
+                              bd2$provincia[bd2$periodo == 3])
+```
+
+
+
+```{r, include=TRUE, echo=FALSE}
+addmargins(provincia_pcontagio1)
+round(addmargins(prop.table(provincia_pcontagio1,1),2),2)*100
+chisq.test(provincia_pcontagio1)
+```
+
+
+### Número y proporción de casos por provincia según pais de contagio, quinquenio 2013-2017. {-}
+```{r, include=TRUE, echo=FALSE}
+addmargins(provincia_pcontagio2)
+round(addmargins(prop.table(provincia_pcontagio2,1),2),2)*100
+chisq.test(provincia_pcontagio2)
+```
+
+### Número y proporción de casos por provincia según pais de contagio, quinquenio 2018-2022. {-}
+```{r, include=TRUE, echo=FALSE}
+addmargins(provincia_pcontagio3)
+round(addmargins(prop.table(provincia_pcontagio3,1),2),2)*100
+chisq.test(provincia_pcontagio3)
+```
+
+
+
+
+## Número y proporción de casos por nacionalidad según país de contagio.
+### Número y proporción de casos por nacionalidad según país de contagio, quinquenio 2008-2012. {-}
+```{r, echo=FALSE, include=FALSE}
+### nacionalidad-pais_contagio
+nacionalidad_pcontagio1 <- table(bd2$nacionalidad[bd2$periodo == 1],
+                           bd2$pais_contagio[bd2$periodo == 1])
+
+nacionalidad_pcontagio2 <- table(bd2$nacionalidad[bd2$periodo == 2],
+                           bd2$pais_contagio[bd2$periodo == 2])
+
+nacionalidad_pcontagio3 <- table(bd2$nacionalidad[bd2$periodo == 3],
+                           bd2$pais_contagio[bd2$periodo == 3])
+```
+
+
+```{r, echo=FALSE, include=TRUE}
+addmargins(nacionalidad_pcontagio1)
+round(addmargins(prop.table(nacionalidad_pcontagio1,1),2),2)*100
+chisq.test(nacionalidad_pcontagio1)
+```
+
+
+### Número y proporción de casos por nacionalidad según país de contagio, quinquenio 2013-2017. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(nacionalidad_pcontagio2)
+round(addmargins(prop.table(nacionalidad_pcontagio2,1),2),2)*100
+chisq.test(nacionalidad_pcontagio2)
+```
+
+
+### Número y proporción de casos por nacionalidad según país de contagio, quinquenio 2018-2022. {-}
+```{r, echo=FALSE, include=TRUE}
+addmargins(nacionalidad_pcontagio3)
+round(addmargins(prop.table(nacionalidad_pcontagio3,1),2),2)*100
+chisq.test(nacionalidad_pcontagio3)
+```
+
+
+
+## Edad de los casos notificados según sexo.
+### Edad de los casos notificados según sexo, quinquenio 2008-2012. {-}
+### Hombres {-}
+
+```{r, echo=FALSE, include=FALSE}
+### edad-sexo
+bd2h <- subset(bd2, id_sexo == "Hombre")
+bd2m <- subset(bd2, id_sexo == "Mujer")
+```
+
+```{r, echo=FALSE, include=TRUE}
+bd2h %>% summarise(
+  Mínimo = min(bd2h$edad2[bd2h$periodo==1]),
+  Máximo = max(bd2h$edad2[bd2h$periodo==1]),
+  Rango = max(bd2h$edad2[bd2h$periodo==1])-min(edad2[bd2h$periodo==1]),
+  Qu_25 = quantile(bd2h$edad2[bd2h$periodo==1], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(bd2h$edad2[bd2h$periodo==1], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(bd2h$edad2[bd2h$periodo==1], prob=c(0.75), na.rm=T),
+  Media = round(mean(bd2h$edad2[bd2h$periodo==1]),4),
+  Mediana = median(bd2h$edad2[bd2h$periodo==1]),
+  Varianza = round(var(bd2h$edad2[bd2h$periodo==1]),4),
+  Desv_Estándar = round(sd(bd2h$edad2[bd2h$periodo==1]),4),
+  CV = round(sd(bd2h$edad2[bd2h$periodo==1])/mean(edad2[bd2h$periodo==1])*100,4)
+)
+
+```
+
+### Mujeres {-}
+```{r, echo=FALSE, include=TRUE}
+bd2m %>% summarise(
+  Mínimo = min(edad2[bd2m$periodo==1]),
+  Máximo = max(edad2[bd2m$periodo==1]),
+  Rango = max(edad2[bd2m$periodo==1])-min(edad2[bd2m$periodo==1]),
+  Qu_25 = quantile(edad2[bd2m$periodo==1], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2m$periodo==1], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2m$periodo==1], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2m$periodo==1]),4),
+  Mediana = median(edad2[bd2m$periodo==1]),
+  Varianza = round(var(edad2[bd2m$periodo==1]),4),
+  Desv_Estándar = round(sd(edad2[bd2m$periodo==1]),4),
+  CV = round(sd(edad2[bd2m$periodo==1])/mean(edad2[bd2m$periodo==1])*100,4)
+)
+```
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2h$edad2[bd2h$periodo==1], y=bd2m$edad2[bd2m$periodo==1])
+```
+
+
+
+
+
+### Edad de los casos notificados según sexo, quinquenio 2013-2017. {-}
+### Hombres {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2h %>% summarise(
+  Mínimo = min(bd2h$edad2[bd2h$periodo==2]),
+  Máximo = max(bd2h$edad2[bd2h$periodo==2]),
+  Rango = max(bd2h$edad2[bd2h$periodo==2])-min(edad2[bd2h$periodo==2]),
+  Qu_25 = quantile(bd2h$edad2[bd2h$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(bd2h$edad2[bd2h$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(bd2h$edad2[bd2h$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(bd2h$edad2[bd2h$periodo==2]),4),
+  Mediana = median(bd2h$edad2[bd2h$periodo==2]),
+  Varianza = round(var(bd2h$edad2[bd2h$periodo==2]),4),
+  Desv_Estándar = round(sd(bd2h$edad2[bd2h$periodo==2]),4),
+  CV = round(sd(bd2h$edad2[bd2h$periodo==2])/mean(edad2[bd2h$periodo==2])*100,4)
+)
+
+```
+
+
+### Mujeres {-}
+```{r, echo=FALSE, include=TRUE}
+bd2m %>% summarise(
+  Mínimo = min(edad2[bd2m$periodo==2]),
+  Máximo = max(edad2[bd2m$periodo==2]),
+  Rango = max(edad2[bd2m$periodo==2])-min(edad2[bd2m$periodo==2]),
+  Qu_25 = quantile(edad2[bd2m$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2m$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2m$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2m$periodo==2]),4),
+  Mediana = median(edad2[bd2m$periodo==2]),
+  Varianza = round(var(edad2[bd2m$periodo==2]),4),
+  Desv_Estándar = round(sd(edad2[bd2m$periodo==2]),4),
+  CV = round(sd(edad2[bd2m$periodo==2])/mean(edad2[bd2m$periodo==2])*100,4)
+)
+```
+
+```{r, include=TRUE, echo=FALSE}
+t.test(bd2h$edad2[bd2h$periodo==2], y=bd2m$edad2[bd2m$periodo==2])
+```
+
+
+### Edad de los casos notificados según sexo, quinquenio 2018-2022. {-}
+### Hombres {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2h %>% summarise(
+  Mínimo = min(bd2h$edad2[bd2h$periodo==3]),
+  Máximo = max(bd2h$edad2[bd2h$periodo==3]),
+  Rango = max(bd2h$edad2[bd2h$periodo==3])-min(edad2[bd2h$periodo==3]),
+  Qu_25 = quantile(bd2h$edad2[bd2h$periodo==3], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(bd2h$edad2[bd2h$periodo==3], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(bd2h$edad2[bd2h$periodo==3], prob=c(0.75), na.rm=T),
+  Media = round(mean(bd2h$edad2[bd2h$periodo==3]),4),
+  Mediana = median(bd2h$edad2[bd2h$periodo==3]),
+  Varianza = round(var(bd2h$edad2[bd2h$periodo==3]),4),
+  Desv_Estándar = round(sd(bd2h$edad2[bd2h$periodo==3]),4),
+  CV = round(sd(bd2h$edad2[bd2h$periodo==3])/mean(edad2[bd2h$periodo==3])*100,4)
+)
+
+```
+
+
+### Mujeres {-}
+```{r, echo=FALSE, include=TRUE}
+bd2m %>% summarise(
+  Mínimo = min(edad2[bd2m$periodo==3]),
+  Máximo = max(edad2[bd2m$periodo==3]),
+  Rango = max(edad2[bd2m$periodo==3])-min(edad2[bd2m$periodo==3]),
+  Qu_25 = quantile(edad2[bd2m$periodo==3], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2m$periodo==3], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2m$periodo==3], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2m$periodo==3]),4),
+  Mediana = median(edad2[bd2m$periodo==3]),
+  Varianza = round(var(edad2[bd2m$periodo==3]),4),
+  Desv_Estándar = round(sd(edad2[bd2m$periodo==3]),4),
+  CV = round(sd(edad2[bd2m$periodo==3])/mean(edad2[bd2m$periodo==3])*100,4)
+)
+```
+
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2h$edad2[bd2h$periodo==3], y=bd2m$edad2[bd2m$periodo==3])
+```
+
+
+
+
+## Edad de los casos notificados según nacionalidad
+### Edad de los casos notificados según nacionalidad, quinquenio 2008-2012. {-}
+### Chilenos {-}
+```{r, echo=FALSE, include=TRUE}
+### edad-nacionalidad
+bd2ch <- subset(bd2, nacionalidad == "Chilenos")
+bd2ex <- subset(bd2, nacionalidad == "Extranjeros")
+```
+
+```{r, echo=FALSE, include=TRUE}
+bd2ch %>% summarise(
+  Mínimo = min(edad2[bd2ch$periodo==1]),
+  Máximo = max(edad2[bd2ch$periodo==1]),
+  Rango = max(edad2[bd2ch$periodo==1])-min(edad2[bd2ch$periodo==1]),
+  Qu_25 = quantile(edad2[bd2ch$periodo==1], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2ch$periodo==1], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2ch$periodo==1], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2ch$periodo==1]),4),
+  Mediana = median(edad2[bd2ch$periodo==1]),
+  Varianza = round(var(edad2[bd2ch$periodo==1]),4),
+  Desv_Estándar = round(sd(edad2[bd2ch$periodo==1]),4),
+  CV = round(sd(edad2[bd2ch$periodo==1])/mean(edad2[bd2ch$periodo==1])*100,4)
+)
+
+```
+
+
+### Extranjeros {-}
+
+
+```{r, echo=FALSE, include=TRUE}
+bd2ex %>% summarise(
+  Mínimo = min(edad2[bd2ex$periodo==1]),
+  Máximo = max(edad2[bd2ex$periodo==1]),
+  Rango = max(edad2[bd2ex$periodo==1])-min(edad2[bd2ex$periodo==1]),
+  Qu_25 = quantile(edad2[bd2ex$periodo==1], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2ex$periodo==1], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2ex$periodo==1], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2ex$periodo==1]),4),
+  Mediana = median(edad2[bd2ex$periodo==1]),
+  Varianza = round(var(edad2[bd2ex$periodo==1]),4),
+  Desv_Estándar = round(sd(edad2[bd2ex$periodo==1]),4),
+  CV = round(sd(edad2[bd2ex$periodo==1])/mean(edad2[bd2ex$periodo==1])*100,4)
+)
+```
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2ch$edad2[bd2ch$periodo==1], y=bd2ex$edad2[bd2ex$periodo==1])
+```
+
+
+
+### Edad de los casos notificados según nacionalidad, quinquenio 2013-2017. {-}
+### Chilenos {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2ch %>% summarise(
+  Mínimo = min(edad2[bd2ch$periodo==2]),
+  Máximo = max(edad2[bd2ch$periodo==2]),
+  Rango = max(edad2[bd2ch$periodo==2])-min(edad2[bd2ch$periodo==2]),
+  Qu_25 = quantile(edad2[bd2ch$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2ch$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2ch$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2ch$periodo==2]),4),
+  Mediana = median(edad2[bd2ch$periodo==2]),
+  Varianza = round(var(edad2[bd2ch$periodo==2]),4),
+  Desv_Estándar = round(sd(edad2[bd2ch$periodo==2]),4),
+  CV = round(sd(edad2[bd2ch$periodo==2])/mean(edad2[bd2ch$periodo==2])*100,4)
+)
+
+```
+
+
+### Extranjeros {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2ex %>% summarise(
+  Mínimo = min(edad2[bd2ex$periodo==2]),
+  Máximo = max(edad2[bd2ex$periodo==2]),
+  Rango = max(edad2[bd2ex$periodo==2])-min(edad2[bd2ex$periodo==2]),
+  Qu_25 = quantile(edad2[bd2ex$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2ex$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2ex$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2ex$periodo==2]),4),
+  Mediana = median(edad2[bd2ex$periodo==2]),
+  Varianza = round(var(edad2[bd2ex$periodo==2]),4),
+  Desv_Estándar = round(sd(edad2[bd2ex$periodo==2]),4),
+  CV = round(sd(edad2[bd2ex$periodo==2])/mean(edad2[bd2ex$periodo==2])*100,4)
+)
+```
+
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2ch$edad2[bd2ch$periodo==2], y=bd2ex$edad2[bd2ex$periodo==2])
+```
+
+### Edad de los casos notificados según nacionalidad, quinquenio 2018-2022. {-}
+### Chilenos {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2ch %>% summarise(
+  Mínimo = min(edad2[bd2ch$periodo==3]),
+  Máximo = max(edad2[bd2ch$periodo==3]),
+  Rango = max(edad2[bd2ch$periodo==3])-min(edad2[bd2ch$periodo==3]),
+  Qu_25 = quantile(edad2[bd2ch$periodo==3], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2ch$periodo==3], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2ch$periodo==3], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2ch$periodo==3]),4),
+  Mediana = median(edad2[bd2ch$periodo==3]),
+  Varianza = round(var(edad2[bd2ch$periodo==3]),4),
+  Desv_Estándar = round(sd(edad2[bd2ch$periodo==3]),4),
+  CV = round(sd(edad2[bd2ch$periodo==3])/mean(edad2[bd2ch$periodo==3])*100,4)
+)
+
+```
+
+
+### Extranjeros {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2ex %>% summarise(
+  Mínimo = min(edad2[bd2ex$periodo==2]),
+  Máximo = max(edad2[bd2ex$periodo==2]),
+  Rango = max(edad2[bd2ex$periodo==2])-min(edad2[bd2ex$periodo==2]),
+  Qu_25 = quantile(edad2[bd2ex$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2ex$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2ex$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2ex$periodo==2]),4),
+  Mediana = median(edad2[bd2ex$periodo==2]),
+  Varianza = round(var(edad2[bd2ex$periodo==2]),4),
+  Desv_Estándar = round(sd(edad2[bd2ex$periodo==2]),4),
+  CV = round(sd(edad2[bd2ex$periodo==2])/mean(edad2[bd2ex$periodo==2])*100,4)
+)
+```
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2ch$edad2[bd2ch$periodo==3], y=bd2ex$edad2[bd2ex$periodo==3])
+```
+
+
+
+## Edad de los casos notificados según provincia
+### Edad de los casos notificados según provincia, quinquenio 2008-2012. {-}
+### Antofagasta {-}
+```{r, echo=FALSE, include=TRUE}
+### edad-nacionalidad
+bd2p1 <- subset(bd2, provincia == "Antofagasta")
+bd2p2 <- subset(bd2, provincia == "El loa y Tocopilla")
+```
+
+```{r, echo=FALSE, include=TRUE}
+bd2p1 %>% summarise(
+  Mínimo = min(edad2[bd2p1$periodo==1]),
+  Máximo = max(edad2[bd2p1$periodo==1]),
+  Rango = max(edad2[bd2p1$periodo==1])-min(edad2[bd2p1$periodo==1]),
+  Qu_25 = quantile(edad2[bd2p1$periodo==1], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2p1$periodo==1], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2p1$periodo==1], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2p1$periodo==1]),4),
+  Mediana = median(edad2[bd2p1$periodo==1]),
+  Varianza = round(var(edad2[bd2p1$periodo==1]),4),
+  Desv_Estándar = round(sd(edad2[bd2p1$periodo==1]),4),
+  CV = round(sd(edad2[bd2p1$periodo==1])/mean(edad2[bd2p1$periodo==1])*100,4)
+)
+
+```
+
+
+### El Loa y Tocopilla {-}
+
+
+```{r, echo=FALSE, include=TRUE}
+bd2p2 %>% summarise(
+  Mínimo = min(edad2[bd2p2$periodo==1]),
+  Máximo = max(edad2[bd2p2$periodo==1]),
+  Rango = max(edad2[bd2p2$periodo==1])-min(edad2[bd2p2$periodo==1]),
+  Qu_25 = quantile(edad2[bd2p2$periodo==1], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2p2$periodo==1], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2p2$periodo==1], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2p2$periodo==1]),4),
+  Mediana = median(edad2[bd2p2$periodo==1]),
+  Varianza = round(var(edad2[bd2p2$periodo==1]),4),
+  Desv_Estándar = round(sd(edad2[bd2p2$periodo==1]),4),
+  CV = round(sd(edad2[bd2p2$periodo==1])/mean(edad2[bd2p2$periodo==1])*100,4)
+)
+```
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2p1$edad2[bd2p1$periodo==1], y=bd2p2$edad2[bd2p2$periodo==1])
+```
+
+
+### Edad de los casos notificados según provincia, quinquenio 2013-2017. {-}
+### Antofagasta {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2p1 %>% summarise(
+  Mínimo = min(edad2[bd2p1$periodo==2]),
+  Máximo = max(edad2[bd2p1$periodo==2]),
+  Rango = max(edad2[bd2p1$periodo==2])-min(edad2[bd2p1$periodo==2]),
+  Qu_25 = quantile(edad2[bd2p1$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2p1$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2p1$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2p1$periodo==2]),4),
+  Mediana = median(edad2[bd2p1$periodo==2]),
+  Varianza = round(var(edad2[bd2p1$periodo==2]),4),
+  Desv_Estándar = round(sd(edad2[bd2p1$periodo==2]),4),
+  CV = round(sd(edad2[bd2p1$periodo==2])/mean(edad2[bd2p1$periodo==2])*100,4)
+)
+
+```
+
+
+### El Loa y Tocopilla {-}
+
+
+```{r, echo=FALSE, include=TRUE}
+bd2p2 %>% summarise(
+  Mínimo = min(edad2[bd2p2$periodo==2]),
+  Máximo = max(edad2[bd2p2$periodo==2]),
+  Rango = max(edad2[bd2p2$periodo==2])-min(edad2[bd2p2$periodo==2]),
+  Qu_25 = quantile(edad2[bd2p2$periodo==2], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2p2$periodo==2], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2p2$periodo==2], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2p2$periodo==2]),4),
+  Mediana = median(edad2[bd2p2$periodo==2]),
+  Varianza = round(var(edad2[bd2p2$periodo==2]),4),
+  Desv_Estándar = round(sd(edad2[bd2p2$periodo==2]),4),
+  CV = round(sd(edad2[bd2p2$periodo==2])/mean(edad2[bd2p2$periodo==2])*100,4)
+)
+```
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2p1$edad2[bd2p1$periodo==2], y=bd2p2$edad2[bd2p2$periodo==2])
+```
+
+
+### Edad de los casos notificados según provincia, quinquenio 2018-2022. {-}
+### Antofagasta {-}
+
+```{r, echo=FALSE, include=TRUE}
+bd2p1 %>% summarise(
+  Mínimo = min(edad2[bd2p1$periodo==3]),
+  Máximo = max(edad2[bd2p1$periodo==3]),
+  Rango = max(edad2[bd2p1$periodo==3])-min(edad2[bd2p1$periodo==3]),
+  Qu_25 = quantile(edad2[bd2p1$periodo==3], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2p1$periodo==3], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2p1$periodo==3], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2p1$periodo==3]),4),
+  Mediana = median(edad2[bd2p1$periodo==3]),
+  Varianza = round(var(edad2[bd2p1$periodo==3]),4),
+  Desv_Estándar = round(sd(edad2[bd2p1$periodo==3]),4),
+  CV = round(sd(edad2[bd2p1$periodo==3])/mean(edad2[bd2p1$periodo==3])*100,4)
+)
+
+```
+
+
+### El Loa y Tocopilla {-}
+
+
+```{r, echo=FALSE, include=TRUE}
+bd2p2 %>% summarise(
+  Mínimo = min(edad2[bd2p2$periodo==3]),
+  Máximo = max(edad2[bd2p2$periodo==3]),
+  Rango = max(edad2[bd2p2$periodo==3])-min(edad2[bd2p2$periodo==3]),
+  Qu_25 = quantile(edad2[bd2p2$periodo==3], prob=c(0.25), na.rm=T),
+  Qu_50 = quantile(edad2[bd2p2$periodo==3], prob=c(0.5), na.rm=T),
+  Qu_75 = quantile(edad2[bd2p2$periodo==3], prob=c(0.75), na.rm=T),
+  Media = round(mean(edad2[bd2p2$periodo==3]),4),
+  Mediana = median(edad2[bd2p2$periodo==3]),
+  Varianza = round(var(edad2[bd2p2$periodo==3]),4),
+  Desv_Estándar = round(sd(edad2[bd2p2$periodo==3]),4),
+  CV = round(sd(edad2[bd2p2$periodo==3])/mean(edad2[bd2p2$periodo==3])*100,4)
+)
+```
+
+```{r, echo=FALSE, include=TRUE}
+t.test(bd2p1$edad2[bd2p1$periodo==3], y=bd2p2$edad2[bd2p2$periodo==3])
+```
+
+

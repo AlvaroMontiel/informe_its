@@ -1,0 +1,12 @@
+# Materiales y métodos {-} 
+
+
+## Descripción de los datos {-}
+
+Estadística descriptiva.
+Tasas de incidencia.
+
+## Inferencia estadística {-}
+
+Modelos usados para la inferencia.
+
